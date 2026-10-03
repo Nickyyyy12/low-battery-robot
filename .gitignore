@@ -31,3 +31,6 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+
+### Clawd render scratch ###
+assets/clawd/_turntable_frames/
