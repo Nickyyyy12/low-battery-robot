@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>《146 天》分镜脚本</title>
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans-sc/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans-sc/700.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans-sc/900.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/800.css">
+<style>
+  @page { size: A4 landscape; margin: 13mm 14mm 14mm; }
+  :root {
+    --ink: #121417;
+    --muted: #5d636b;
+    --faint: #8b9198;
+    --rule: #dfe2e6;
+    --wash: #f4f5f7;
+    --red: #c8231b;
+    --amber: #b86e00;
+    --green: #1d7f3a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; color: var(--ink); }
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 10.2pt;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ---------- header ---------- */
+  .hero {
+    background: #0b0c0e;
+    color: #f2f2f2;
+    border-radius: 6px;
+    padding: 22px 28px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: end;
+  }
+  .hero h1 {
+    margin: 0;
+    font-size: 30pt;
+    font-weight: 900;
+    letter-spacing: 1px;
+    line-height: 1.15;
+  }
+  .hero h1 .num { font-family: 'JetBrains Mono', monospace; font-weight: 800; color: #ff5a4f; }
+  .hero .sub { margin-top: 6px; color: #a9afb6; font-size: 10.5pt; }
+  .hero .count {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    color: #a9afb6;
+    font-size: 9pt;
+    line-height: 1.4;
+  }
+  .hero .count b { display: block; font-size: 34pt; color: #fff; font-weight: 800; line-height: 1; }
+
+  .specs {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-top: 12px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .specs div { padding: 8px 10px; border-right: 1px solid var(--rule); }
+  .specs div:last-child { border-right: 0; }
+  .specs small { display: block; color: var(--faint); font-size: 8pt; letter-spacing: .5px; }
+  .specs span { font-weight: 700; font-size: 9.6pt; line-height: 1.45; display: block; }
+
+  .note {
+    margin-top: 10px;
+    border-left: 3px solid var(--amber);
+    background: #fff7ea;
+    padding: 8px 12px;
+    font-size: 9.6pt;
+    border-radius: 0 4px 4px 0;
+  }
+
+  .numbers {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .numbers div {
+    background: var(--wash);
+    border-radius: 6px;
+    padding: 10px 12px 9px;
+  }
+  .numbers small { display: block; color: var(--muted); font-size: 8.4pt; }
+  .numbers b { font-family: 'JetBrains Mono', monospace; font-size: 17pt; font-weight: 800; line-height: 1.25; }
+  .numbers b.red { color: var(--red); }
+  .numbers b.amber { color: var(--amber); }
+
+  h2.section {
+    font-size: 12pt;
+    font-weight: 900;
+    margin: 18px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  /* ---------- acts ---------- */
+  .act { margin-top: 16px; break-inside: auto; }
+  .act-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--ink);
+    break-after: avoid;
+  }
+  .act-head .no {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 10pt;
+    background: var(--ink);
+    color: #fff;
+    padding: 1px 8px;
+    border-radius: 3px;
+  }
+  .act-head h3 { margin: 0; font-size: 13.5pt; font-weight: 900; }
+  .act-head .time { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: var(--muted); font-size: 9.5pt; }
+  .act-head .mood { color: var(--muted); font-size: 9.2pt; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left;
+    font-size: 8.4pt;
+    color: var(--faint);
+    font-weight: 700;
+    padding: 6px 10px 4px;
+    border-bottom: 1px solid var(--rule);
+    letter-spacing: .5px;
+  }
+  tbody td {
+    vertical-align: top;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  tbody tr { break-inside: avoid; }
+  td.pic { width: 31%; color: var(--muted); font-size: 9.4pt; }
+  td.txt { width: 47%; }
+  td.snd { width: 22%; color: var(--muted); font-size: 9.2pt; }
+  .line { display: block; font-weight: 700; }
+  .line + .line { margin-top: 2px; }
+  .line.big { font-weight: 900; font-size: 12.5pt; }
+  .line.quote { color: var(--muted); font-weight: 700; }
+  .red { color: var(--red); }
+  .amber { color: var(--amber); }
+  .green { color: var(--green); }
+  .tag {
+    display: inline-block;
+    font-size: 8pt;
+    font-weight: 700;
+    padding: 0 6px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .tag.left { background: #e9eaec; color: #4b5057; }
+  .tag.right { background: #fff0d6; color: var(--amber); }
+
+  .jd { counter-reset: jd; margin: 2px 0 0; padding: 0; list-style: none; }
+  .jd li { font-weight: 700; padding-left: 26px; position: relative; line-height: 1.55; }
+  .jd li::before {
+    counter-increment: jd;
+    content: counter(jd);
+    position: absolute; left: 0; top: 2px;
+    width: 17px; height: 17px;
+    border: 1.5px solid var(--red);
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt; line-height: 15px; text-align: center;
+    color: var(--red);
+  }
+
+  .plan td { font-size: 9.6pt; }
+  .plan td.m { font-weight: 900; width: 13%; }
+  .plan td.h { font-family: 'JetBrains Mono', monospace; width: 17%; color: var(--muted); }
+  .plan td.w { width: 46%; }
+  .plan td.c { width: 24%; font-weight: 700; color: var(--green); }
+  .plan tr.total td { border-bottom: 2px solid var(--ink); font-weight: 900; }
+
+  .endings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+  .endings div { border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; }
+  .endings div.pick { border: 2px solid var(--ink); }
+  .endings small { color: var(--faint); font-family: 'JetBrains Mono', monospace; font-size: 8.5pt; }
+  .endings b { display: block; font-size: 14pt; font-weight: 900; margin: 2px 0 6px; line-height: 1.4; }
+  .endings p { margin: 0; color: var(--muted); font-size: 9.2pt; }
+
+  .confirm {
+    margin-top: 16px;
+    background: #0b0c0e;
+    color: #f2f2f2;
+    border-radius: 6px;
+    padding: 14px 20px;
+    font-size: 10.2pt;
+    break-inside: avoid;
+  }
+  .confirm b { color: #fff; }
+  .confirm ul { margin: 6px 0 0; padding-left: 18px; color: #c9ced4; }
+  .page-break { break-before: page; }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div>
+    <h1>《<span class="num">146</span> 天》分镜脚本</h1>
+    <div class="sub">一支写给现在的你的视频 · 待确认稿</div>
+  </div>
+  <div class="count">距离 2027.03.01<b>146</b>天</div>
+</section>
+
+<div class="specs">
+  <div><small>画幅</small><span>16:9 横屏<br>1920×1080</span></div>
+  <div><small>时长</small><span>约 3 分钟</span></div>
+  <div><small>交付</small><span>MP4</span></div>
+  <div><small>画面</small><span>抽象：粒子、<br>光线、文字</span></div>
+  <div><small>口吻</small><span>「你」</span></div>
+  <div><small>基调</small><span>当头棒喝<br>事实 + 毒舌</span></div>
+  <div><small>声音</small><span>代码合成：秒针、<br>心跳、低频、重击</span></div>
+</div>
+
+<div class="note">
+  <b>日期更正：</b>你那边（布里斯班）已经是 <b>10 月 6 日</b>，所以倒计时是 <b>146 天</b>，不是上一轮说的 147 天。下面所有数字都按 10 月 6 日算。如果你过几天才看，告诉我日期，改一个参数就能重新导出。
+</div>
+
+<div class="numbers">
+  <div><small>今天</small><b>10.06</b></div>
+  <div><small>截止（三月春招）</small><b class="red">03.01</b></div>
+  <div><small>剩下</small><b>146 天</b></div>
+  <div><small>折合</small><b>3504 小时</b></div>
+  <div><small>每天能给它的</small><b class="amber">3 小时</b></div>
+  <div><small>一共</small><b class="amber">438 小时</b></div>
+</div>
+
+<!-- ============ 第 1 幕 ============ -->
+<div class="act">
+  <div class="act-head"><span class="no">01</span><h3>冷开场</h3><span class="mood">安静 → 一记重击</span><span class="time">0:00 – 0:12</span></div>
+  <table>
+    <thead><tr><th>画面</th><th>屏幕上的字</th><th>声音</th></tr></thead>
+    <tbody>
+      <tr><td class="pic">全黑。屏幕中央一个光标在闪。</td><td class="txt">—</td><td class="snd">静。</td></tr>
+      <tr><td class="pic">光标一个字一个字打出你的原话。</td><td class="txt"><span class="line quote">「我现在什么都不会。」</span></td><td class="snd">键盘声</td></tr>
+      <tr><td class="pic">停一秒。这行字被一道光切碎，散成灰。</td><td class="txt"><span class="line big">所以呢？</span></td><td class="snd">一声低沉的重击</td></tr>
+      <tr><td class="pic">灰烬慢慢落下。</td><td class="txt"><span class="line">你打算什么时候开始「会」？</span></td><td class="snd">秒针开始走</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 第 2 幕 ============ -->
+<div class="act">
+  <div class="act-head"><span class="no">02</span><h3>「明天」循环</h3><span class="mood">越来越快、越来越挤</span><span class="time">0:12 – 0:42</span></div>
+  <table>
+    <thead><tr><th>画面</th><th>屏幕上的字</th><th>声音</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pic">你的一天，被压成一串闪过的字。每句只停留一下，循环越转越快。</td>
+        <td class="txt">
+          <span class="line">打开 IDEA。</span>
+          <span class="line">看了二十分钟教程。</span>
+          <span class="line">好难。好无聊。</span>
+          <span class="line">学这个到底有什么用？</span>
+          <span class="line">下一步该学什么？不知道。</span>
+          <span class="line">换个教程，从头再看。</span>
+          <span class="line">今天状态不好。</span>
+          <span class="line red">明天再开始。</span>
+        </td>
+        <td class="snd">秒针从每分钟 60 下一路加速到 240 下</td>
+      </tr>
+      <tr>
+        <td class="pic">角落里计数：第 1 天、第 2 天、第 3 天……每说一次「明天」，就落下一颗灰色粒子，慢慢堆满屏幕底部。</td>
+        <td class="txt"><span class="line">「明天再开始」 <span class="mono red">× 37</span></span></td>
+        <td class="snd">低频嗡鸣越来越响；每个「明天」带一声故障噪音</td>
+      </tr>
+      <tr><td class="pic">突然定格，所有粒子悬在半空。</td><td class="txt"><span class="line big">你不是在等状态。</span></td><td class="snd">所有声音瞬间切断</td></tr>
+      <tr><td class="pic">粒子砸落。</td><td class="txt"><span class="line big red">你是在等一个可以不开始的理由。</span></td><td class="snd">重击</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 第 3 幕 ============ -->
+<div class="act">
+  <div class="act-head"><span class="no">03</span><h3>算账</h3><span class="mood">冷静、残酷的数字</span><span class="time">0:42 – 1:08</span></div>
+  <table>
+    <thead><tr><th>画面</th><th>屏幕上的字</th><th>声音</th></tr></thead>
+    <tbody>
+      <tr><td class="pic">白字，一行一行砸出来。</td><td class="txt"><span class="line">你说，你想在明年三月拿到 offer。</span></td><td class="snd">心跳</td></tr>
+      <tr><td class="pic">一张发光的目标卡片浮起。</td><td class="txt"><span class="line amber">浙江 / 西安 · 互联网大厂 · Java 后端 · 月薪 20K</span></td><td class="snd"></td></tr>
+      <tr><td class="pic"></td><td class="txt"><span class="line">今天是 2026 年 10 月 6 日。</span></td><td class="snd"></td></tr>
+      <tr><td class="pic">巨大的数字占满整个屏幕。</td><td class="txt"><span class="line big mono">146 天</span></td><td class="snd">重击</td></tr>
+      <tr><td class="pic">数字翻动，再一项一项往下减。</td><td class="txt"><span class="line mono">= 3504 小时</span><span class="line">减掉睡觉、上课、吃饭、通勤、发呆……</span></td><td class="snd">心跳加快</td></tr>
+      <tr><td class="pic">最后只剩一小截。</td><td class="txt"><span class="line">你每天真正能给它的：<span class="amber">3 小时</span></span><span class="line mono">146 × 3 = 438 小时</span></td><td class="snd"></td></tr>
+      <tr><td class="pic"></td><td class="txt"><span class="line">438 小时，从「什么都不会」到大厂 offer。</span><span class="line">够吗？</span></td><td class="snd">停顿，只剩心跳</td></tr>
+      <tr><td class="pic"></td><td class="txt"><span class="line">不一定。</span></td><td class="snd"></td></tr>
+      <tr><td class="pic">全片最大的一行字之一。</td><td class="txt"><span class="line big red">但 0 小时，一定不够。</span></td><td class="snd">重击</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 第 4 幕 ============ -->
+<div class="act">
+  <div class="act-head"><span class="no">04</span><h3>那张清单</h3><span class="mood">把「迷茫」变成 7 个空格子</span><span class="time">1:08 – 1:28</span></div>
+  <table>
+    <thead><tr><th>画面</th><th>屏幕上的字</th><th>声音</th></tr></thead>
+    <tbody>
+      <tr><td class="pic">一张发光的岗位卡片展开。</td><td class="txt"><span class="line">这是你想要的那个岗位。</span><span class="line">它不关心你迷不迷茫。它只要这 7 条：</span></td><td class="snd">低频</td></tr>
+      <tr>
+        <td class="pic">7 条要求逐条亮出，每条前面一个空格子。</td>
+        <td class="txt">
+          <ol class="jd">
+            <li>扎实的 Java 基础，熟悉集合、多线程与并发</li>
+            <li>理解 JVM 内存模型与垃圾回收</li>
+            <li>熟悉 MySQL：索引、事务、SQL 调优</li>
+            <li>熟悉 Redis 及缓存常见问题</li>
+            <li>熟悉 Spring Boot / MyBatis 等主流框架</li>
+            <li>有完整的后端项目经验</li>
+            <li>扎实的数据结构与算法基础</li>
+          </ol>
+        </td>
+        <td class="snd">每亮一条，一声短促的提示音</td>
+      </tr>
+      <tr><td class="pic">7 个空格子一起闪红。</td><td class="txt"><span class="line">你现在能勾几条？</span><span class="line big mono red">0 / 7</span></td><td class="snd">重击</td></tr>
+      <tr><td class="pic"></td><td class="txt"><span class="line">你问「学这个有什么用」——</span><span class="line">每一条，三月的面试官都会当面问你。</span></td><td class="snd"></td></tr>
+      <tr><td class="pic"></td><td class="txt"><span class="line">你说「不知道下一步学什么」——</span><span class="line amber">现在知道了：从第 1 条开始。</span></td><td class="snd"></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 第 5 幕 ============ -->
+<div class="act">
+  <div class="act-head"><span class="no">05</span><h3>两条时间线</h3><span class="mood">同样的 146 天，两种结局</span><span class="time">1:28 – 2:22</span></div>
+  <table>
+    <thead><tr><th>画面</th><th>屏幕上的字</th><th>声音</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="pic">画面从中间劈开。中线上是日期和倒计时：2026.10.06 → 2027.03.01，146 → 0。</td>
+        <td class="txt"><span class="line"><span class="tag left">左</span>明天再开始的你</span><span class="line"><span class="tag right">右</span>今天就开始的你</span></td>
+        <td class="snd">秒针越走越快，低频不断升高</td>
+      </tr>
+      <tr>
+        <td class="pic"><b>左边</b>：灰色，粒子往下掉。「明天」计数一路涨到 146，清单上一个勾都没有。每个月飘过一句借口。</td>
+        <td class="txt">
+          <span class="line quote">10 月「等下周一，从头开始。」</span>
+          <span class="line quote">11 月「先考完试再说。」</span>
+          <span class="line quote">12 月「刚放假，先休息几天。」</span>
+          <span class="line quote">1 月「过完年再好好学。」</span>
+          <span class="line quote">2 月「……好像来不及了。」</span>
+        </td>
+        <td class="snd"></td>
+      </tr>
+      <tr>
+        <td class="pic"><b>右边</b>：暖色，粒子往上聚成光。「已投入」从 0 涨到 438 小时，清单一条条点亮 ✓，旁边标出这个月在学什么（见下表）。</td>
+        <td class="txt"><span class="line green">✓ ✓ ✓ ✓ ✓ ✓ ✓</span></td>
+        <td class="snd">每打一个勾，一声明亮的拨弦</td>
+      </tr>
+      <tr><td class="pic">03.01，倒计时归零。</td><td class="txt"><span class="line big mono">0</span></td><td class="snd">巨大的重击，然后彻底安静</td></tr>
+      <tr>
+        <td class="pic"><b>左边的三月</b></td>
+        <td class="txt">
+          <span class="line">三月。春招开了。</span>
+          <span class="line">7 条要求，你一条也勾不上。</span>
+          <span class="line">然后你对自己说：</span>
+          <span class="line big red">「明年三月再说吧。」</span>
+        </td>
+        <td class="snd">一个闷闷的低音</td>
+      </tr>
+      <tr>
+        <td class="pic"><b>右边的三月</b></td>
+        <td class="txt">
+          <span class="line">三月。你坐在面试官对面。</span>
+          <span class="line quote">「说一下 HashMap 的底层原理。」</span>
+          <span class="line">你差点笑出来——</span>
+          <span class="line">10 月 6 日，你学的第一个就是它。</span>
+          <span class="line big amber">offer · Java 后端 · 20K</span>
+        </td>
+        <td class="snd">温暖的长音升起</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section">右边那条线：每个月学什么（每天 3 小时）</h2>
+<table class="plan">
+  <thead><tr><th>月份</th><th>时间</th><th>学什么</th><th>清单</th></tr></thead>
+  <tbody>
+    <tr><td class="m">10 月（6 日起）</td><td class="h">26 天 · 78 小时</td><td class="w">把 Java 基础补齐；集合：ArrayList、HashMap 的用法和源码</td><td class="c" style="color:var(--amber)">第 1 条进度过半</td></tr>
+    <tr><td class="m">11 月</td><td class="h">30 天 · 90 小时</td><td class="w">多线程与并发（synchronized、volatile、线程池）；JVM 内存模型与 GC</td><td class="c">✓ 第 1 条　✓ 第 2 条</td></tr>
+    <tr><td class="m">12 月</td><td class="h">31 天 · 93 小时</td><td class="w">MySQL（索引、事务、SQL 调优）；Redis（数据结构、缓存问题）</td><td class="c">✓ 第 3 条　✓ 第 4 条</td></tr>
+    <tr><td class="m">1 月</td><td class="h">31 天 · 93 小时</td><td class="w">Spring Boot + MyBatis；开始做一个完整的后端项目</td><td class="c">✓ 第 5 条</td></tr>
+    <tr><td class="m">2 月</td><td class="h">28 天 · 84 小时</td><td class="w">把项目做完；写简历。算法从 10 月起每天顺手 1 道，2 月刷完 LeetCode Hot 100</td><td class="c">✓ 第 6 条　✓ 第 7 条</td></tr>
+    <tr class="total"><td class="m">合计</td><td class="h">146 天 · 438 小时</td><td class="w"></td><td class="c">7 / 7</td></tr>
+  </tbody>
+</table>
+
+<!-- ============ 第 6 幕 ============ -->
+<div class="act">
+  <div class="act-head"><span class="no">06</span><h3>同一个人</h3><span class="mood">收住，压低声音</span><span class="time">2:22 – 2:40</span></div>
+  <table>
+    <thead><tr><th>画面</th><th>屏幕上的字</th><th>声音</th></tr></thead>
+    <tbody>
+      <tr><td class="pic">左右两边向中间合拢，变回一条线。</td><td class="txt"><span class="line">你总觉得，明天的自己会更想学。</span></td><td class="snd">很轻的和弦</td></tr>
+      <tr><td class="pic"></td><td class="txt"><span class="line">不会的。</span><span class="line">明天的你，跟今天一样累，一样怕难，一样想再等等。</span></td><td class="snd"></td></tr>
+      <tr><td class="pic">一条线上，只剩一个光点。</td><td class="txt"><span class="line">这两个你，今天还是同一个人。</span><span class="line big">分开他们的，只有今天。</span></td><td class="snd"></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 第 7 幕 ============ -->
+<div class="act">
+  <div class="act-head"><span class="no">07</span><h3>现在</h3><span class="mood">三记重击，一个任务，一个倒计时</span><span class="time">2:40 – 3:05</span></div>
+  <table>
+    <thead><tr><th>画面</th><th>屏幕上的字</th><th>声音</th></tr></thead>
+    <tbody>
+      <tr><td class="pic">全黑。</td><td class="txt"><span class="line big">关掉这个视频。</span></td><td class="snd">重击</td></tr>
+      <tr><td class="pic"></td><td class="txt"><span class="line big">打开 IDEA。</span></td><td class="snd">重击</td></tr>
+      <tr><td class="pic">全片最大的字。</td><td class="txt"><span class="line big red">现在。</span></td><td class="snd">最重的一击</td></tr>
+      <tr>
+        <td class="pic">一张任务卡片。</td>
+        <td class="txt">
+          <span class="line amber">今天 · 3 小时 · ArrayList + HashMap</span>
+          <span class="line">就用你写过的 Robot 类：用 ArrayList 装下一支机器人队伍，用 HashMap 按名字一下找到 Nicky。</span>
+          <span class="line">顺手 1 道题：LeetCode 第 1 题「两数之和」——它也用 HashMap。</span>
+        </td>
+        <td class="snd">秒针，一秒一下</td>
+      </tr>
+      <tr><td class="pic">倒计时，秒数在跳。</td><td class="txt"><span class="line mono">距离 2027.03.01 还有 146 天</span></td><td class="snd"></td></tr>
+      <tr><td class="pic">最后一帧。</td><td class="txt"><span class="line big">明天不会来。三月会。</span></td><td class="snd">一声长音，渐弱，结束</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="section">最后一句话：我推荐 A，你也可以换</h2>
+<div class="endings">
+  <div class="pick">
+    <small>A · 推荐</small>
+    <b>明天不会来。<br>三月会。</b>
+    <p>同时戳中「明天再开始」和你的截止日期：明天永远是明天，三月一定会到。</p>
+  </div>
+  <div>
+    <small>B</small>
+    <b>三月一定会来。<br>问题是，站在那里的是哪一个你。</b>
+    <p>呼应第 5 幕的两条时间线，更像一个留给你的问题。</p>
+  </div>
+  <div>
+    <small>C</small>
+    <b>你等的那个状态，<br>在你开始以后才会来。</b>
+    <p>专门回答「等状态好了再学」，最温和，但也最准。</p>
+  </div>
+</div>
+
+<div class="confirm">
+  <b>请确认：</b>没问题就回「确认」，我就开始做；想改的话，告诉我第几幕、哪一句。最值得你看一眼的是：
+  <ul>
+    <li>毒舌的分寸：第 2 幕结尾、第 4 幕开头、第 5 幕左边的结局——太狠还是不够狠？</li>
+    <li>第 5 幕左边的借口，像不像你会说的话？可以换成你自己真说过的。</li>
+    <li>最后一句话选 A、B 还是 C。</li>
+  </ul>
+</div>
+
+</body>
+</html>
