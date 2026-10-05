@@ -98,7 +98,8 @@ async function full() {
   await run('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', video]);
   const mp4 = path.join(OUT, '146天.mp4');
   await run('ffmpeg', ['-loglevel', 'error', '-y', '-i', video, '-i', wav, '-map', '0:v', '-map', '1:a',
-    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart',
+    '-c:v', 'libx264', '-preset', 'slow', '-crf', '22', '-pix_fmt', 'yuv420p',
+    '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart',
     '-metadata', 'title=146 天', mp4]);
   segs.forEach((s) => fs.unlinkSync(s.file));
   fs.unlinkSync(list);
