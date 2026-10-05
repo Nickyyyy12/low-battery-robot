@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>146 天</title>
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-sc/400.css">
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-sc/700.css">
+<link rel="stylesheet" href="node_modules/@fontsource/noto-sans-sc/900.css">
+<link rel="stylesheet" href="node_modules/@fontsource/jetbrains-mono/500.css">
+<link rel="stylesheet" href="node_modules/@fontsource/jetbrains-mono/800.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { position: absolute; inset: 0; margin: auto; width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; }
+  body.render canvas { width: 1920px; height: 1080px; max-width: none; max-height: none; inset: 0 auto auto 0; margin: 0; }
+  #hint { position: absolute; left: 16px; bottom: 12px; color: #666; font: 13px/1.4 sans-serif; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<div id="hint">点击播放 · 空格暂停 · ← → 快退/快进 5 秒</div>
+<script src="src/timeline.js"></script>
+<script src="src/film.js"></script>
+<script>
+  // 三种用法：
+  //   index.html            预览（有 out/soundtrack.wav 时同步放声音）
+  //   index.html?t=95.5     只画某一秒
+  //   index.html?render     给 render.js 用，由它逐帧驱动
+  const params = new URLSearchParams(location.search);
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  window.ready = Film.init().then(() => true);
+
+  if (params.has('render')) {
+    document.body.classList.add('render');
+    document.getElementById('hint').remove();
+    window.drawAt = (t) => Film.renderFrame(ctx, t);
+  } else if (params.has('t')) {
+    document.getElementById('hint').remove();
+    window.ready.then(() => Film.renderFrame(ctx, parseFloat(params.get('t'))));
+  } else {
+    const audio = new Audio('out/soundtrack.wav');
+    let playing = false, offset = 0, t0 = 0;
+    const now = () => (playing ? offset + (performance.now() - t0) / 1000 : offset);
+    function seek(t) {
+      offset = Math.max(0, Math.min(Timeline.DURATION, t));
+      t0 = performance.now();
+      audio.currentTime = offset;
+    }
+    function toggle() {
+      offset = now();
+      playing = !playing;
+      t0 = performance.now();
+      if (playing) { audio.currentTime = offset; audio.play().catch(() => {}); } else audio.pause();
+    }
+    window.addEventListener('click', toggle);
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') { e.preventDefault(); toggle(); }
+      if (e.code === 'ArrowRight') seek(now() + 5);
+      if (e.code === 'ArrowLeft') seek(now() - 5);
+    });
+    window.ready.then(function loop() {
+      const t = now();
+      if (t >= Timeline.DURATION && playing) toggle();
+      Film.renderFrame(ctx, Math.min(t, Timeline.DURATION - 1e-3));
+      requestAnimationFrame(loop);
+    });
+  }
+</script>
+</body>
+</html>
