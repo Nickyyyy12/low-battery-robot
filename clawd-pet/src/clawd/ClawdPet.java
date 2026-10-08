@@ -1,11 +1,18 @@
 package clawd;
 
 import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDialog;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
 import javax.swing.JPopupMenu;
 import javax.swing.JWindow;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.GraphicsEnvironment;
@@ -13,6 +20,9 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -65,6 +75,14 @@ public final class ClawdPet {
             System.exit(1);
         }
         boolean demo = Arrays.asList(args).contains("--demo");
+        try {
+            // 用系统原生外观：菜单、对话框更顺眼，macOS 上 ⌘V 也能粘贴
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ReflectiveOperationException | UnsupportedLookAndFeelException ignored) {
+            // 用默认外观
+        }
+        UIManager.put("OptionPane.okButtonText", "确定");
+        UIManager.put("OptionPane.cancelButtonText", "取消");
         JPopupMenu.setDefaultLightWeightPopupEnabled(false);
         SwingUtilities.invokeLater(() -> new ClawdPet(demo).start());
     }
@@ -283,6 +301,10 @@ public final class ClawdPet {
             window.setAlwaysOnTop(onTop.isSelected());
             prefs.putBoolean("alwaysOnTop", onTop.isSelected());
         });
+        JMenuItem setToken = new JMenuItem("设置长期令牌…");
+        setToken.addActionListener(e -> askForToken());
+        JMenuItem clearToken = new JMenuItem("清除长期令牌");
+        clearToken.addActionListener(e -> clearToken());
         JMenuItem quit = new JMenuItem("退出");
         quit.addActionListener(e -> {
             savePosition();
@@ -292,8 +314,81 @@ public final class ClawdPet {
         menu.add(toggle);
         menu.add(onTop);
         menu.addSeparator();
+        menu.add(setToken);
+        menu.add(clearToken);
+        menu.addSeparator();
         menu.add(quit);
+        menu.addPopupMenuListener(new PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+                clearToken.setEnabled(UsageClient.readSavedToken() != null);
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+            }
+
+            @Override
+            public void popupMenuCanceled(PopupMenuEvent e) {
+            }
+        });
         return menu;
+    }
+
+    /** 粘贴 claude setup-token 生成的长期令牌，这样就不用经常打开 Claude Code 续期了。 */
+    private void askForToken() {
+        JPasswordField field = new JPasswordField(28);
+        Object[] content = {
+                "1. 在终端运行  claude setup-token  并按提示登录",
+                "2. 把最后打印出的 sk-ant-oat01-… 整串粘贴到下面：",
+                field,
+                "令牌只保存在本机（用户目录下的 .clawd-pet 文件夹），请不要发给别人。",
+        };
+        JOptionPane pane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+        JDialog dialog = pane.createDialog(null, "设置长期令牌");
+        dialog.setAlwaysOnTop(true);
+        dialog.addWindowFocusListener(new WindowAdapter() {
+            @Override
+            public void windowGainedFocus(WindowEvent e) {
+                field.requestFocusInWindow();
+            }
+        });
+        dialog.setVisible(true);
+        dialog.dispose();
+        if (!Integer.valueOf(JOptionPane.OK_OPTION).equals(pane.getValue())) {
+            return;
+        }
+        String token = new String(field.getPassword()).trim();
+        if (token.isEmpty()) {
+            return;
+        }
+        if (!token.startsWith("sk-ant-")) {
+            message("这看起来不像 claude setup-token 生成的令牌（应以 sk-ant- 开头），没有保存。");
+            return;
+        }
+        try {
+            UsageClient.saveToken(token);
+            refreshNow();
+        } catch (IOException ex) {
+            message("保存失败：" + ex.getMessage());
+        }
+    }
+
+    private void clearToken() {
+        try {
+            UsageClient.clearSavedToken();
+            refreshNow();
+        } catch (IOException ex) {
+            message("清除失败：" + ex.getMessage());
+        }
+    }
+
+    private static void message(String text) {
+        JOptionPane pane = new JOptionPane(text, JOptionPane.INFORMATION_MESSAGE);
+        JDialog dialog = pane.createDialog(null, "Clawd");
+        dialog.setAlwaysOnTop(true);
+        dialog.setVisible(true);
+        dialog.dispose();
     }
 
     private void toggleExpanded() {

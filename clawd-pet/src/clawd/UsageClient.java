@@ -10,6 +10,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -56,11 +57,15 @@ final class UsageClient {
         http = b.build();
     }
 
+    /** longLived：用户自己设置的长期令牌（环境变量或右键菜单），不会自动续期。 */
+    record Token(String value, boolean longLived) {
+    }
+
     Usage.Remote fetch() throws UsageException {
-        String token = findToken();
+        Token token = findToken();
         HttpRequest req = HttpRequest.newBuilder(USAGE_URI)
                 .timeout(Duration.ofSeconds(20))
-                .header("Authorization", "Bearer " + token)
+                .header("Authorization", "Bearer " + token.value())
                 .header("anthropic-beta", "oauth-2025-04-20")
                 .header("Accept", "application/json")
                 .header("User-Agent", "clawd-pet/1.0")
@@ -80,8 +85,14 @@ final class UsageClient {
             case 200:
                 return parse(resp.body());
             case 401:
+                if (token.longLived()) {
+                    throw new UsageException("长期令牌无效或已过期：请重新运行 claude setup-token，再右键「设置长期令牌…」");
+                }
                 throw new UsageException("登录令牌被拒绝：" + RENEW_HINT + "（仍不行就在 claude 里 /login 重新登录）", true);
             case 403:
+                if (token.longLived()) {
+                    throw new UsageException("长期令牌没有查询额度的权限：右键「清除长期令牌」可改回读取 Claude Code 登录");
+                }
                 throw new UsageException("没有权限：需要用 Pro / Max 订阅账号登录 Claude Code");
             case 429:
                 throw new UsageException("查询太频繁，稍后会自动重试");
@@ -163,11 +174,15 @@ final class UsageClient {
 
     // ---------- 登录令牌 ----------
 
-    /** 依次尝试：环境变量 → ~/.claude/.credentials.json → macOS 钥匙串。 */
-    static String findToken() throws UsageException {
+    /** 依次尝试：环境变量 → 右键菜单设置的长期令牌 → ~/.claude/.credentials.json → macOS 钥匙串。 */
+    static Token findToken() throws UsageException {
         String env = System.getenv("CLAUDE_CODE_OAUTH_TOKEN");
         if (env != null && !env.isBlank()) {
-            return env.trim();
+            return new Token(env.trim(), true);
+        }
+        String saved = readSavedToken();
+        if (saved != null) {
+            return new Token(saved, true);
         }
         boolean expired = false;
         for (Path dir : ClaudePaths.configDirs()) {
@@ -178,7 +193,7 @@ final class UsageClient {
             try {
                 String token = tokenFromCredentials(Files.readString(file, StandardCharsets.UTF_8));
                 if (token != null) {
-                    return token;
+                    return new Token(token, false);
                 }
                 expired = true;
             } catch (IOException | IllegalArgumentException ignored) {
@@ -191,7 +206,7 @@ final class UsageClient {
                 try {
                     String token = tokenFromCredentials(json);
                     if (token != null) {
-                        return token;
+                        return new Token(token, false);
                     }
                     expired = true;
                 } catch (IllegalArgumentException ignored) {
@@ -203,6 +218,37 @@ final class UsageClient {
             throw new UsageException("本机登录令牌已过期：" + RENEW_HINT, true);
         }
         throw new UsageException("没找到 Claude Code 登录信息：请先在本机终端运行 claude 并登录", true);
+    }
+
+    // ---------- 长期令牌（claude setup-token 生成，保存在 ~/.clawd-pet/token） ----------
+
+    private static Path savedTokenFile() {
+        return Path.of(System.getProperty("user.home"), ".clawd-pet", "token");
+    }
+
+    static String readSavedToken() {
+        try {
+            String t = Files.readString(savedTokenFile(), StandardCharsets.UTF_8).trim();
+            return t.isEmpty() ? null : t;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    static void saveToken(String token) throws IOException {
+        Path file = savedTokenFile();
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, token.trim(), StandardCharsets.UTF_8);
+        try {
+            // 只有自己能读（Windows 不支持这种权限写法，忽略即可）
+            Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
+        } catch (UnsupportedOperationException ignored) {
+            // Windows
+        }
+    }
+
+    static void clearSavedToken() throws IOException {
+        Files.deleteIfExists(savedTokenFile());
     }
 
     /** 返回可用的 accessToken；已过期返回 null；格式不对抛 IllegalArgumentException。 */
