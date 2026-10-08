@@ -161,7 +161,14 @@ public final class ClawdPet {
             });
             String failure = ClaudeRenewer.renew();
             if (failure != null) {
-                lastRenewFailure = "自动续期失败（" + failure + "）。" + e.getMessage();
+                String lower = failure.toLowerCase();
+                boolean needLogin = lower.contains("login") || lower.contains("could not be refreshed")
+                        || lower.contains("authenticate");
+                // 续期令牌本身也失效了，只能重新登录一次；登录后 Clawd 会自己恢复并继续自动续期
+                lastRenewFailure = needLogin
+                        ? "登录已彻底过期，需要重新登录一次：在本机终端运行 claude，输入 /login 登录，"
+                                + "Clawd 一分钟内会自动恢复（" + failure + "）"
+                        : "自动续期失败（" + failure + "）。" + e.getMessage();
                 throw new UsageClient.UsageException(lastRenewFailure, true);
             }
             lastRenewFailure = null;
