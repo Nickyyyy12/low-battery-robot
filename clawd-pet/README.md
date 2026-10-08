@@ -27,22 +27,20 @@
 - **左键点 Clawd**：展开 / 收起面板（收起后只显示最吃紧的那一项）
 - **按住拖动**：移动位置，下次启动会记住
 - **双击面板**：立即刷新
-- **右键**：立即刷新、始终置顶、设置 / 清除长期令牌、退出
+- **右键**：立即刷新、始终置顶、登录过期时自动续期（开关）、退出
 
 ## 数据从哪来
 
 **订阅额度**：读取本机 Claude Code 的登录令牌，查询 Claude Code `/usage` 命令背后用的同一个接口。令牌按以下顺序查找：
 
-1. 环境变量 `CLAUDE_CODE_OAUTH_TOKEN`，或右键菜单里设置的长期令牌
-2. `~/.claude/.credentials.json`（Windows 为 `%USERPROFILE%\.claude\.credentials.json`）
-3. macOS 钥匙串中的 `Claude Code-credentials`
+1. `~/.claude/.credentials.json`（Windows 为 `%USERPROFILE%\.claude\.credentials.json`）
+2. macOS 钥匙串中的 `Claude Code-credentials`
 
-所以请先在这台电脑上用 Pro / Max 账号登录过 Claude Code。这个令牌几个小时就会过期，平时用 Claude Code 时会自动续期；如果你很少在本机用 Claude Code，可以改用长期令牌：
+所以请先在这台电脑上用 Pro / Max 账号登录过 Claude Code。
 
-1. 在终端运行 `claude setup-token`，按提示登录，复制最后打印出的 `sk-ant-oat01-…`
-2. 右键 Clawd →「设置长期令牌…」，粘贴保存（保存在 `~/.clawd-pet/token`，只在本机）
+这个令牌几个小时就会过期，平时用 Claude Code 时它会自动续期。如果你很少在本机用 Claude Code，桌宠发现过期后会在后台运行一次 `claude -p`（用 haiku 模型回一个 "ok"），由 Claude Code 自己完成续期，桌宠不会改写任何登录信息。每次续期会用掉极少的额度；不想要的话，右键取消勾选「登录过期时自动续期」。
 
-不想用了就右键「清除长期令牌」，会改回读取 Claude Code 的登录。
+> `claude setup-token` 生成的长期令牌没有查询额度的权限，用不了。
 
 额度每 5 分钟查询一次（该接口有频率限制，不建议更频繁）。需要代理时，设置 `HTTPS_PROXY` 环境变量（如 `http://127.0.0.1:7890`），否则使用系统代理。
 
@@ -57,6 +55,7 @@
 | `ClawdPet.java` | 入口：透明窗口、拖动、右键菜单、定时刷新 |
 | `PetPanel.java` | 画 Clawd 和用量面板，以及眨眼、踏步、冒汗、睡觉等动画 |
 | `UsageClient.java` | 查找登录令牌，请求并解析订阅额度 |
+| `ClaudeRenewer.java` | 令牌过期时在后台运行 claude 让它续期 |
 | `LocalUsageScanner.java` | 统计本地日志里今天的 token（按消息去重、按文件缓存） |
 | `Usage.java` | 数据结构 |
 | `Fmt.java` | 数字、倒计时、时刻的中文格式化 |
