@@ -18,6 +18,9 @@ final class Json {
     }
 
     static Object parse(String text) {
+        if (text.startsWith("\uFEFF")) {
+            text = text.substring(1); // Windows 上有的文件开头带 BOM
+        }
         Json p = new Json(text);
         p.ws();
         Object v = p.value();

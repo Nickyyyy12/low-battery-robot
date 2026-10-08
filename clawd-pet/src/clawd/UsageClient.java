@@ -193,7 +193,7 @@ final class UsageClient {
             } catch (IOException e) {
                 checked.add(where + " 读不了");
             } catch (IllegalArgumentException e) {
-                checked.add(where + " 里没有登录令牌");
+                checked.add(where + " " + e.getMessage());
             }
         }
         if (System.getProperty("os.name", "").toLowerCase().contains("mac")) {
@@ -207,7 +207,7 @@ final class UsageClient {
                     }
                     expired = true;
                 } catch (IllegalArgumentException e) {
-                    checked.add("钥匙串条目格式不对");
+                    checked.add("钥匙串条目" + e.getMessage());
                 }
             } else {
                 checked.add(code == 44 ? "钥匙串里没有 Claude Code 条目" : "钥匙串读取失败（代码 " + code + "）");
@@ -230,12 +230,28 @@ final class UsageClient {
         return s.startsWith(home) ? "~" + s.substring(home.length()) : s;
     }
 
-    /** 返回可用的 accessToken；已过期返回 null；格式不对抛 IllegalArgumentException。 */
+    /**
+     * 返回可用的 accessToken；已过期返回 null；
+     * 读不出来时抛 IllegalArgumentException，消息说明原因（只含字段名，不含任何令牌内容）。
+     */
     private static String tokenFromCredentials(String json) {
-        Map<String, Object> oauth = Json.obj(Json.obj(Json.parse(json)), "claudeAiOauth");
+        Map<String, Object> root;
+        try {
+            root = Json.obj(Json.parse(json));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("不是有效的 JSON（" + (json.isBlank() ? "文件是空的" : "格式读不懂") + "）");
+        }
+        if (root == null) {
+            throw new IllegalArgumentException("内容格式不对");
+        }
+        Map<String, Object> oauth = Json.obj(root, "claudeAiOauth");
+        if (oauth == null) {
+            throw new IllegalArgumentException("里没有账号登录信息（只有："
+                    + (root.isEmpty() ? "空" : String.join("、", root.keySet())) + "）");
+        }
         String token = Json.str(oauth, "accessToken");
         if (token == null || token.isBlank()) {
-            throw new IllegalArgumentException("没有 accessToken");
+            throw new IllegalArgumentException("里的账号登录信息不完整（有：" + String.join("、", oauth.keySet()) + "）");
         }
         Double expiresAt = Json.num(oauth, "expiresAt");
         if (expiresAt != null && expiresAt < System.currentTimeMillis()) {
