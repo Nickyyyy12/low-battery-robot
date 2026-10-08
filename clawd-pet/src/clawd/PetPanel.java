@@ -249,10 +249,16 @@ final class PetPanel extends JPanel {
             text(g, F_SMALL, MUTED, "正在统计今日本地用量…", x0, y + 13);
             y += 18;
         } else if (!local.found()) {
-            text(g, F_SMALL, MUTED, "今日本地：没找到 Claude Code 记录", x0, y + 13);
+            text(g, F_SMALL, MUTED, "今日本机：没找到 Claude Code 记录", x0, y + 13);
             y += 18;
+        } else if (local.messages() == 0) {
+            text(g, F_TEXT, INK, "今日本机 Token", x0, y + 13);
+            textRight(g, F_BOLD, INK, "0", x1, y + 13);
+            y += 19;
+            text(g, F_SMALL, MUTED, "今天还没在本机用过（云端、网页对话不计入）", x0, y + 12);
+            y += 16;
         } else {
-            text(g, F_TEXT, INK, "今日 Token（" + local.messages() + " 条回复）", x0, y + 13);
+            text(g, F_TEXT, INK, "今日本机 Token（" + local.messages() + " 条回复）", x0, y + 13);
             textRight(g, F_BOLD, INK, Fmt.tokens(local.total()), x1, y + 13);
             y += 19;
             text(g, F_SMALL, MUTED, "输入 " + Fmt.tokens(local.input())
@@ -345,32 +351,40 @@ final class PetPanel extends JPanel {
         g.setColor(new Color(0, 0, 0, 40));
         g.fillOval(left + PX, ground - 4, 14 * PX, 8);
 
+        // 身体和腿先拼成一整块再一次填充，否则高分屏缩放时像素块之间会露出细缝
+        Area shape = new Area();
         // 腿：身体往下一沉腿就变短；鼠标放上去会原地踏步
-        g.setColor(CLAWD);
         int legTop = top + BODY.length * PX;
         for (int k = 0; k < LEGS.length; k++) {
             int lift = hover && !sleep && (k % 2 == (frame / 3) % 2) ? PX / 2 : 0;
-            g.fillRect(left + LEGS[k] * PX, legTop, PX, ground - lift - legTop);
+            shape.add(new Area(new Rectangle(left + LEGS[k] * PX, legTop - 1, PX, ground - lift - legTop + 1)));
         }
-
-        // 身体
-        boolean wave = hover && !sleep;
-        boolean armUp = wave && (frame / 3) % 2 == 0;
+        boolean armUp = hover && !sleep && (frame / 3) % 2 == 0;
         for (int r = 0; r < BODY.length; r++) {
-            for (int c = 0; c < 16; c++) {
-                if (BODY[r].charAt(c) != '#') {
+            String row = BODY[r];
+            if (armUp && r == 4) {
+                row = row.substring(0, 14) + ".."; // 右手举起来打招呼
+            }
+            int c = 0;
+            while (c < row.length()) {
+                if (row.charAt(c) != '#') {
+                    c++;
                     continue;
                 }
-                if (armUp && r == 4 && c >= 14) {
-                    continue; // 右手举起来打招呼
+                int start = c;
+                while (c < row.length() && row.charAt(c) == '#') {
+                    c++;
                 }
-                g.fillRect(left + c * PX, top + r * PX, PX, PX);
+                shape.add(new Area(new Rectangle(left + start * PX, top + r * PX, (c - start) * PX, PX)));
             }
         }
         if (armUp) {
-            g.fillRect(left + 14 * PX, top + 3 * PX, 2 * PX, PX);
-            g.fillRect(left + 15 * PX, top + 2 * PX, PX, PX);
+            shape.add(new Area(new Rectangle(left + 14 * PX, top + 3 * PX, 2 * PX, PX)));
+            shape.add(new Area(new Rectangle(left + 15 * PX, top + 2 * PX, PX, PX)));
         }
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+        g.setColor(CLAWD);
+        g.fill(shape);
 
         // 眼睛
         g.setColor(EYE);
@@ -385,6 +399,7 @@ final class PetPanel extends JPanel {
             g.fillRect(left + EYE_L * PX, top + PX, PX, 2 * PX);
             g.fillRect(left + EYE_R * PX, top + PX, PX, 2 * PX);
         }
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         // 心情特效
         if (mood == Mood.SWEAT || mood == Mood.TIRED) {
@@ -462,6 +477,10 @@ final class PetPanel extends JPanel {
         text(g, f, c, s, right - getFontMetrics(f).stringWidth(s), baseline);
     }
 
+    private static boolean isWordChar(char c) {
+        return c < 128 && Character.isLetterOrDigit(c);
+    }
+
     /** 按宽度折行（中文没有空格，所以按字符折）。 */
     private List<String> wrap(String s, Font f, int maxW) {
         FontMetrics fm = getFontMetrics(f);
@@ -470,8 +489,18 @@ final class PetPanel extends JPanel {
         for (int k = 0; k < s.length(); k++) {
             char ch = s.charAt(k);
             if (cur.length() > 0 && fm.stringWidth(cur.toString() + ch) > maxW) {
-                lines.add(cur.toString());
-                cur.setLength(0);
+                // 不把英文单词（如 claude）从中间拆开
+                int cut = cur.length();
+                while (cut > 0 && isWordChar(ch) && isWordChar(cur.charAt(cut - 1))) {
+                    cut--;
+                    ch = cur.charAt(cut);
+                }
+                if (cut == 0) {
+                    cut = cur.length();
+                }
+                lines.add(cur.substring(0, cut));
+                cur.delete(0, cut);
+                ch = s.charAt(k);
             }
             cur.append(ch);
         }

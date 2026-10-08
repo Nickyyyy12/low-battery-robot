@@ -51,6 +51,7 @@ public final class ClawdPet {
         return t;
     });
     private volatile long lastRemoteFetch;
+    private volatile boolean retrySoon;
 
     private ClawdPet(boolean demo) {
         this.demo = demo;
@@ -79,7 +80,7 @@ public final class ClawdPet {
 
         new Timer(100, e -> {
             panel.tick();
-            refreshAfterReset();
+            autoRefresh();
         }).start();
 
         if (demo) {
@@ -100,11 +101,13 @@ public final class ClawdPet {
         SwingUtilities.invokeLater(() -> panel.setFetching(true));
         try {
             Usage.Remote r = client.fetch();
+            retrySoon = false;
             SwingUtilities.invokeLater(() -> {
                 panel.setRemote(r);
                 fitHeight();
             });
         } catch (UsageClient.UsageException e) {
+            retrySoon = e.retrySoon;
             SwingUtilities.invokeLater(() -> {
                 panel.setRemoteError(e.getMessage()); // 保留上一次的数据，只多显示一行错误
                 fitHeight();
@@ -136,19 +139,26 @@ public final class ClawdPet {
         }
     }
 
-    /** 某项额度到了重置时间，过半分钟主动拉一次新数据。 */
-    private void refreshAfterReset() {
-        Usage.Remote r = panel.remote();
-        if (demo || r == null) {
+    /**
+     * 两种情况不等 5 分钟的常规刷新：
+     * 令牌过期等用户处理一下就能好的错误，每分钟重试；某项额度到了重置时间，过半分钟拉一次新数据。
+     */
+    private void autoRefresh() {
+        if (demo) {
             return;
         }
-        Instant reset = r.nextReset();
-        if (reset == null) {
-            return;
-        }
-        Instant due = reset.plusSeconds(30);
         long now = System.currentTimeMillis();
-        if (Instant.now().isAfter(due) && lastRemoteFetch < due.toEpochMilli() && now - lastRemoteFetch > 60_000) {
+        if (now - lastRemoteFetch <= 60_000) {
+            return;
+        }
+        boolean due = retrySoon;
+        Usage.Remote r = panel.remote();
+        Instant reset = r == null ? null : r.nextReset();
+        if (reset != null) {
+            Instant after = reset.plusSeconds(30);
+            due |= Instant.now().isAfter(after) && lastRemoteFetch < after.toEpochMilli();
+        }
+        if (due) {
             lastRemoteFetch = now;
             io.execute(this::loadRemote);
         }

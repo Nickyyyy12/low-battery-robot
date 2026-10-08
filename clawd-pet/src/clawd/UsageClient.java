@@ -30,10 +30,20 @@ final class UsageClient {
 
     /** 给用户看的错误信息。 */
     static final class UsageException extends Exception {
+        /** 用户处理一下就能好的问题（如令牌过期），桌宠会每分钟重试一次。 */
+        final boolean retrySoon;
+
         UsageException(String message) {
+            this(message, false);
+        }
+
+        UsageException(String message, boolean retrySoon) {
             super(message);
+            this.retrySoon = retrySoon;
         }
     }
+
+    private static final String RENEW_HINT = "在本机终端运行一次 claude 并随便发一句话即可续期，Clawd 一分钟内会自动恢复";
 
     private final HttpClient http;
 
@@ -61,7 +71,7 @@ final class UsageClient {
             resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new UsageException("网络连接失败：" + e.getClass().getSimpleName()
-                    + "（如需代理，可设置 HTTPS_PROXY 环境变量）");
+                    + "（如需代理，可设置 HTTPS_PROXY 环境变量）", true);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new UsageException("请求被中断");
@@ -70,7 +80,7 @@ final class UsageClient {
             case 200:
                 return parse(resp.body());
             case 401:
-                throw new UsageException("登录已过期，打开一次 Claude Code 即可续期");
+                throw new UsageException("登录令牌被拒绝：" + RENEW_HINT + "（仍不行就在 claude 里 /login 重新登录）", true);
             case 403:
                 throw new UsageException("没有权限：需要用 Pro / Max 订阅账号登录 Claude Code");
             case 429:
@@ -190,9 +200,9 @@ final class UsageClient {
             }
         }
         if (expired) {
-            throw new UsageException("登录已过期，打开一次 Claude Code 即可续期");
+            throw new UsageException("本机登录令牌已过期：" + RENEW_HINT, true);
         }
-        throw new UsageException("没找到 Claude Code 登录信息：请先在本机运行 claude 并登录");
+        throw new UsageException("没找到 Claude Code 登录信息：请先在本机终端运行 claude 并登录", true);
     }
 
     /** 返回可用的 accessToken；已过期返回 null；格式不对抛 IllegalArgumentException。 */
