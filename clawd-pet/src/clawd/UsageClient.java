@@ -139,7 +139,9 @@ final class UsageClient {
             case "seven_day_oauth_apps": return "每周 · 第三方应用";
             default:
                 // 将来接口新增的额度也照样显示，例如 seven_day_xxx → 每周 · xxx
-                return key.startsWith("seven_day_") ? "每周 · " + key.substring(10) : key.replace('_', ' ');
+                // 认不出的是内部代号（如 iguana_necktie），标成「其他额度」，括号里保留原名方便对照
+                return key.startsWith("seven_day_") ? "每周 · " + key.substring(10)
+                        : "其他额度（" + key.replace('_', ' ') + "）";
         }
     }
 
@@ -149,7 +151,7 @@ final class UsageClient {
             case "seven_day": return "本周";
             case "seven_day_sonnet": return "Sonnet";
             case "seven_day_opus": return "Opus";
-            default: return key.startsWith("seven_day_") ? key.substring(10) : key;
+            default: return key.startsWith("seven_day_") ? key.substring(10) : "其他";
         }
     }
 
