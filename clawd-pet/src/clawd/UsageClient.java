@@ -176,9 +176,12 @@ final class UsageClient {
      */
     static String findToken() throws UsageException {
         boolean expired = false;
+        List<String> checked = new ArrayList<>(); // 找不到时告诉用户都查了哪里
         for (Path dir : ClaudePaths.configDirs()) {
             Path file = dir.resolve(".credentials.json");
+            String where = shortPath(file);
             if (!Files.isRegularFile(file)) {
+                checked.add(where + " 不存在");
                 continue;
             }
             try {
@@ -187,28 +190,44 @@ final class UsageClient {
                     return token;
                 }
                 expired = true;
-            } catch (IOException | IllegalArgumentException ignored) {
-                // 换下一个位置试试
+            } catch (IOException e) {
+                checked.add(where + " 读不了");
+            } catch (IllegalArgumentException e) {
+                checked.add(where + " 里没有登录令牌");
             }
         }
         if (System.getProperty("os.name", "").toLowerCase().contains("mac")) {
-            String json = readMacKeychain();
-            if (json != null) {
+            String[] result = new String[1];
+            int code = readMacKeychain(result);
+            if (result[0] != null) {
                 try {
-                    String token = tokenFromCredentials(json);
+                    String token = tokenFromCredentials(result[0]);
                     if (token != null) {
                         return token;
                     }
                     expired = true;
-                } catch (IllegalArgumentException ignored) {
-                    // 当作没找到
+                } catch (IllegalArgumentException e) {
+                    checked.add("钥匙串条目格式不对");
                 }
+            } else {
+                checked.add(code == 44 ? "钥匙串里没有 Claude Code 条目" : "钥匙串读取失败（代码 " + code + "）");
             }
         }
         if (expired) {
             throw new UsageException("本机登录令牌已过期：" + RENEW_HINT, true, true);
         }
-        throw new UsageException("没找到 Claude Code 登录信息：请先在本机终端运行 claude 并登录", true);
+        String env = System.getenv("CLAUDE_CODE_OAUTH_TOKEN");
+        if (env != null && !env.isBlank()) {
+            checked.add("环境变量 CLAUDE_CODE_OAUTH_TOKEN 是长期令牌，查不了额度");
+        }
+        throw new UsageException("没找到 Claude Code 登录信息：请在本机终端运行 claude，输入 /login 用 Claude 账号登录。"
+                + "（" + String.join("；", checked) + "）", true);
+    }
+
+    private static String shortPath(Path p) {
+        String home = System.getProperty("user.home");
+        String s = p.toString();
+        return s.startsWith(home) ? "~" + s.substring(home.length()) : s;
     }
 
     /** 返回可用的 accessToken；已过期返回 null；格式不对抛 IllegalArgumentException。 */
@@ -225,22 +244,26 @@ final class UsageClient {
         return token;
     }
 
-    private static String readMacKeychain() {
+    /** 读到的内容放进 out[0]，返回 security 命令的退出码（44 表示没有这个条目）。 */
+    private static int readMacKeychain(String[] out) {
         try {
             Process p = new ProcessBuilder("security", "find-generic-password", "-s", "Claude Code-credentials", "-w")
-                    .redirectErrorStream(false)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
                     .start();
-            String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            String text = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
             if (!p.waitFor(5, TimeUnit.SECONDS)) {
                 p.destroyForcibly();
-                return null;
+                return -1;
             }
-            return p.exitValue() == 0 && !out.isEmpty() ? out : null;
+            if (p.exitValue() == 0 && !text.isEmpty()) {
+                out[0] = text;
+            }
+            return p.exitValue();
         } catch (IOException e) {
-            return null;
+            return -1;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return null;
+            return -1;
         }
     }
 
