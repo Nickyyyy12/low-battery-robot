@@ -249,15 +249,50 @@ final class UsageClient {
             throw new IllegalArgumentException("里没有账号登录信息（只有："
                     + (root.isEmpty() ? "空" : String.join("、", root.keySet())) + "）");
         }
-        String token = Json.str(oauth, "accessToken");
-        if (token == null || token.isBlank()) {
-            throw new IllegalArgumentException("里的账号登录信息不完整（有：" + String.join("、", oauth.keySet()) + "）");
+        Object raw = oauth.get("accessToken");
+        if (!(raw instanceof String) || ((String) raw).isBlank()) {
+            if (raw == null || raw instanceof String) {
+                if (oauth.get("refreshToken") != null) {
+                    return null; // 访问令牌是空的但还有续期令牌：当作过期，交给 Claude Code 续期
+                }
+                throw new IllegalArgumentException("里的登录令牌是空的");
+            }
+            throw new IllegalArgumentException("里的 accessToken 不是文本（是" + typeName(raw) + "），可能被加密保存了");
         }
-        Double expiresAt = Json.num(oauth, "expiresAt");
-        if (expiresAt != null && expiresAt < System.currentTimeMillis()) {
+        if (expiresAt(oauth) < System.currentTimeMillis()) {
             return null;
         }
-        return token;
+        return (String) raw;
+    }
+
+    /** expiresAt 一般是毫秒数字，也兼容写成字符串的情况；没有就当作不过期。 */
+    private static double expiresAt(Map<String, Object> oauth) {
+        Object v = oauth.get("expiresAt");
+        if (v instanceof Number) {
+            return ((Number) v).doubleValue();
+        }
+        if (v instanceof String) {
+            String str = ((String) v).trim();
+            try {
+                return Double.parseDouble(str);
+            } catch (NumberFormatException e) {
+                Instant t = parseTime(str);
+                if (t != null) {
+                    return t.toEpochMilli();
+                }
+            }
+        }
+        return Double.MAX_VALUE;
+    }
+
+    private static String typeName(Object v) {
+        if (v instanceof Map) {
+            return "对象";
+        }
+        if (v instanceof List) {
+            return "数组";
+        }
+        return v instanceof Number ? "数字" : v instanceof Boolean ? "布尔值" : v.getClass().getSimpleName();
     }
 
     /** 读到的内容放进 out[0]，返回 security 命令的退出码（44 表示没有这个条目）。 */

@@ -60,6 +60,7 @@ public final class ClawdPet {
     private volatile boolean retrySoon;
     private volatile long lastRenewAttempt;
     private volatile String lastRenewFailure;
+    private volatile boolean renewDidNotHelp; // 续期后还是读不到令牌，就别再浪费额度反复续期
     private volatile boolean autoRenew = prefs.getBoolean("autoRenew", true);
 
     private ClawdPet(boolean demo) {
@@ -117,6 +118,8 @@ public final class ClawdPet {
         try {
             Usage.Remote r = fetchRenewingIfNeeded();
             retrySoon = false;
+            renewDidNotHelp = false;
+            lastRenewFailure = null;
             SwingUtilities.invokeLater(() -> {
                 panel.setRemote(r);
                 fitHeight();
@@ -144,7 +147,7 @@ public final class ClawdPet {
             if (!e.needsRenew || !autoRenew) {
                 throw e;
             }
-            if (now - lastRenewAttempt < RENEW_GAP_MS) {
+            if (renewDidNotHelp || now - lastRenewAttempt < RENEW_GAP_MS) {
                 if (lastRenewFailure != null) { // 让失败原因一直显示，直到下次重试
                     throw new UsageClient.UsageException(lastRenewFailure, true);
                 }
@@ -163,7 +166,17 @@ public final class ClawdPet {
             }
             lastRenewFailure = null;
             loadLocal();
-            return client.fetch();
+            try {
+                return client.fetch();
+            } catch (UsageClient.UsageException again) {
+                if (again.needsRenew) {
+                    renewDidNotHelp = true;
+                    lastRenewFailure = "已在后台运行 claude 续期，但还是登录不上。"
+                            + "请在终端运行 claude，输入 /login 重新登录，Clawd 会自动恢复";
+                    throw new UsageClient.UsageException(lastRenewFailure, true);
+                }
+                throw again;
+            }
         }
     }
 
@@ -345,6 +358,7 @@ public final class ClawdPet {
             prefs.putBoolean("autoRenew", autoRenew);
             if (autoRenew) {
                 lastRenewAttempt = 0;
+                renewDidNotHelp = false;
                 refreshNow();
             }
         });
